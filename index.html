@@ -858,12 +858,12 @@ function rOrdenes(){
           <div><b style="font-size:13px">${c.propiedad?.direccion||'?'}</b><div style="font-size:11px;color:var(--sub)">${c.propiedad?.barrio||''} · ${c.propiedad?.ciudad||''}</div></div>
         </div>
         <div style="font-size:13px;margin-bottom:6px;line-height:1.5;padding:8px;background:var(--cd);border:1px solid var(--brd);border-radius:8px"><b style="font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:3px">Descripción del cliente</b>${c.descripcion||'Sin descripción'}</div>
-        <div style="font-size:12px;color:var(--sub);margin-bottom:4px">👤 ${c.inquilino?.nombre||''} · 📱 ${c.inquilino?.telefono_principal||''}</div>
+        <div style="font-size:12px;color:var(--sub);margin-bottom:4px">👤 ${c.inquilino?.nombre||'Cliente'}</div>
         ${c.inquilino?.hora_preferida?`<div style="font-size:12px;color:var(--green);margin-bottom:6px;font-weight:600">🕐 Disponible: ${c.inquilino.hora_preferida}</div>`:''}
         <a href="tel:3001234567" class="callb" style="margin-bottom:4px">📞 Llamar a Ejecutivo Postventa</a>
         <div class="ff"><label class="ffl">💰 Costo estimado</label><input class="ffi" id="price_${c.id}" type="number" placeholder="150000"></div>
         <div class="ff"><label class="ffl">📝 Observaciones (materiales, aclaraciones)</label><textarea class="ffi" id="obs_${c.id}" style="min-height:50px" placeholder="Qué materiales necesito, qué herramientas llevo, aclaraciones..."></textarea></div>
-        <div class="ff"><label class="ffl">⏱ Tiempo estimado en sitio</label><select class="ffi" id="tsite_${c.id}"><option value="">Seleccionar...</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="90">1 hora 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">Medio día</option></select></div>
+        <div class="ff"><label class="ffl">⏱ ¿Cuánto tiempo te toma realizar la reparación?</label><select class="ffi" id="tsite_${c.id}"><option value="">Seleccionar...</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="90">1 hora 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">Medio día</option><option value="480">Todo el día</option></select></div>
         <button class="jobbt take" onclick="takeOrder('${c.id}')">🖐 Tomar esta orden</button>
       </div></div>`;
   });
@@ -874,6 +874,7 @@ async function takeOrder(casoId){
   const prof=myProf();if(!prof)return toast('Sin perfil de civil','terr');
   const priceEl=$('price_'+casoId);
   const price=priceEl?parseInt(priceEl.value)||0:0;
+  if(!price) return toast('Debes ingresar el costo estimado para tomar la orden','twarn');
   const obsEl=$('obs_'+casoId);
   const obs=obsEl?obsEl.value.trim():'';
   const tsiteEl=$('tsite_'+casoId);
