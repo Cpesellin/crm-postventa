@@ -54,7 +54,7 @@ header{position:sticky;top:0;z-index:100;background:var(--hdr);backdrop-filter:b
 /* TABS */
 .tabs{display:flex;gap:2px;padding:2px;background:var(--cd2);border-radius:7px;border:1px solid var(--brd);margin-bottom:8px}.tab{flex:1;padding:6px;font-size:12px;font-weight:700;text-align:center;border:none;background:none;border-radius:5px;color:var(--sub);cursor:pointer}.tab.act{background:var(--b600);color:#fff}
 /* FLOATING CHAT BUTTON */
-.chat-fab{position:fixed;bottom:20px;left:16px;z-index:250;display:none;align-items:center;gap:8px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:28px;padding:12px 20px;font-size:14px;font-weight:800;box-shadow:0 6px 24px rgba(18,140,126,.4);cursor:pointer;animation:fabPulse 2s infinite}
+.chat-fab{position:fixed;bottom:20px;left:16px;z-index:250;display:none;align-items:center;justify-content:center;width:56px;height:56px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:50%;font-size:26px;box-shadow:0 6px 24px rgba(18,140,126,.5);cursor:pointer;animation:fabPulse 2s infinite}
 .chat-fab.show{display:flex}
 @keyframes fabPulse{0%,100%{box-shadow:0 6px 24px rgba(18,140,126,.4)}50%{box-shadow:0 6px 32px rgba(18,140,126,.7)}}
 /* FULLSCREEN CHAT OVERLAY */
@@ -191,7 +191,7 @@ header{position:sticky;top:0;z-index:100;background:var(--hdr);backdrop-filter:b
 <!-- CONFIRM -->
 <div class="cfdlg" id="cfdlg" style="display:none"><div class="cfbox"><div class="cfi" id="cfi"></div><div class="cft" id="cft"></div><div class="cfm" id="cfm"></div><div class="cfbtns"><button style="background:var(--g100);color:var(--g700)" onclick="cfX()">Cancelar</button><button id="cfok" style="background:var(--b600);color:#fff">OK</button></div></div></div>
 
-<button class="chat-fab" id="chatFab" onclick="openFullChat()">💬 Chatea con nosotros</button>
+<button class="chat-fab" id="chatFab" onclick="openFullChat()">💬</button>
 <div class="chat-fs" id="chatFS">
   <div class="chat-fs-hdr"><button class="back" onclick="closeFullChat()">←</button><div class="info"><b id="chatFSTitle">Chat del caso</b><small id="chatFSSub">En línea</small></div></div>
   <div class="chat-fs-body" id="chatFSBody"></div>
@@ -545,7 +545,7 @@ async function sendFSMedia(file){
   }catch(e){toast('Error','terr')}
 }
 
-function buildUnifiedChat(msgs,casoId,prefix){return `<button class="bt bp" style="width:100%;padding:10px;font-size:14px;background:linear-gradient(135deg,#25D366,#128C7E)" onclick="showChatFab('${casoId}','${prefix}');openFullChat()">💬 Abrir chat</button>`}
+function buildUnifiedChat(msgs,casoId,prefix){const c=D.casos.find(x=>x.id===casoId);const title=c?tk(c.numero_caso):'Chat';return `<button class="bt bp" style="width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,#25D366,#128C7E)" onclick="showChatFab('${casoId}','${title}');openFullChat()">💬 Abrir chat</button>`}
 function buildChat(msgs,canal,casoId){return buildUnifiedChat(msgs,casoId,canal)}
 function togEmoji(uid){const el=$('emj_'+uid);if(el)el.classList.toggle('show')}
 async function sendChat(casoId,canal,inputId){const inp=$(inputId);if(!inp)return;const t=inp.value.trim();if(!t)return;const tipo=U.rol==='usuario'?'inquilino':U.rol==='civil'?'profesional':'admin';await SB.from('pv_mensajes').insert({caso_id:casoId,autor_tipo:tipo,autor_id:U.id,autor_nombre:U.nombre,mensaje:t,canal:'servicio'});inp.value='';toast('✓');const s=document.querySelector('.mi.act')?.dataset.s;if(s)ren(s)}
@@ -720,7 +720,7 @@ async function openCasoAdmin(id){
 
   // Chat (unified - all participants)
   b+=`<div class="msc"><div class="msct">💬 Chat (${ms.length})</div>`;
-  b+=buildUnifiedChat(ms,'adm_'+id,'adm');
+  b+=`<button class="bt bp" style="width:100%;padding:12px;font-size:14px;background:linear-gradient(135deg,#25D366,#128C7E)" onclick="showChatFab('${id}','${tk(c.numero_caso)}');openFullChat()">💬 Abrir chat</button>`;
   b+=`</div>`;
 
   // Actions
