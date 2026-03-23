@@ -179,12 +179,7 @@ const SU='https://keasjfgcjkskvdcudoml.supabase.co';
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtlYXNqZmdjamtza3ZkY3Vkb21sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MjIwNDQsImV4cCI6MjA4OTE5ODA0NH0.BfZy552V_WaYITcqWazQaIUHEBAtXA5tJiN_GPWRegw';
 const CN='dfelsbmbo',CP='fichas_unsigned';
 const _CASES_Q='*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)';
-// Anti-cache: add timestamp to EVERY Supabase URL (most reliable cache-bust method)
-const SB=window.supabase.createClient(SU,SK,{global:{fetch:(url,opts)=>{
-  const sep=typeof url==='string'&&url.includes('?')?'&':'?';
-  const bustUrl=(typeof url==='string'?url+sep+'_t='+Date.now():url);
-  return fetch(bustUrl,opts);
-}}});
+const SB=window.supabase.createClient(SU,SK);
 async function fetchCases(){const{data,error}=await SB.from('pv_casos').select(_CASES_Q).order('created_at',{ascending:false});if(error)console.error('fetchCases error:',error);return data||[]}
 async function fetchCaseById(id){const{data}=await SB.from('pv_casos').select(_CASES_Q).eq('id',id).single();return data}
 
