@@ -181,12 +181,19 @@ const CN='dfelsbmbo',CP='fichas_unsigned';
 const _CASES_Q='*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)';
 // Custom fetch that busts browser cache
 const _origFetch=window.fetch;
-window.fetch=function(url,opts={}){
-  if(typeof url==='string'&&url.includes('supabase.co')){
-    opts.headers={...(opts.headers||{}),'Cache-Control':'no-cache','Pragma':'no-cache','X-Bust':Date.now().toString()};
-    opts.cache='no-store';
-  }
-  return _origFetch.call(this,url,opts);
+window.fetch=function(input,init){
+  try{
+    const url=typeof input==='string'?input:(input instanceof Request?input.url:'');
+    if(url.includes('supabase.co')){
+      init=Object.assign({},init||{});
+      const h=new Headers(init.headers||{});
+      h.set('Cache-Control','no-cache');
+      h.set('Pragma','no-cache');
+      init.headers=h;
+      init.cache='no-store';
+    }
+  }catch(e){}
+  return _origFetch.call(this,input,init);
 };
 const SB=window.supabase.createClient(SU,SK);
 async function fetchCases(){const{data,error}=await SB.from('pv_casos').select(_CASES_Q).order('created_at',{ascending:false});if(error)console.error('fetchCases error:',error);return data||[]}
