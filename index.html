@@ -948,23 +948,48 @@ function buildExpandableCase(c, open, prefix){
   });
   tl+='</div>';
 
-  // Professional info
+  // Professional info - detailed card for client trust/security
   let profInfo='';
   if(c.profesional){
-    profInfo=`<div style="margin-top:6px;padding:6px;background:var(--greenbg);border:1px solid var(--gb);border-radius:6px;font-size:17px;display:flex;align-items:center;gap:6px">${c.profesional.foto?`<img src="${c.profesional.foto}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">`:'🔧'} <div><b>${c.profesional.nombre}</b>${c.profesional.numero_documento?' · CC '+c.profesional.numero_documento:''}<br>⭐ ${c.profesional.rating_promedio}</div></div>`;
+    const p=c.profesional;
+    profInfo=`<div style="margin-top:10px;background:var(--cd);border:2px solid var(--gb);border-radius:12px;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#065f46,#059669);padding:10px 14px;color:#fff">
+        <div style="font-size:11px;font-weight:700;opacity:.8">🔒 PROFESIONAL ASIGNADO</div>
+        <div style="font-size:10px;opacity:.6;margin-top:1px">Orden ${tk(c.numero_caso)}</div>
+      </div>
+      <div style="padding:14px;display:flex;gap:12px;align-items:center">
+        <div style="flex-shrink:0">${p.foto
+          ?`<img src="${p.foto}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--green)">`
+          :`<div style="width:64px;height:64px;border-radius:50%;background:var(--greenbg);border:3px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:28px">🔧</div>`
+        }</div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:800">${p.nombre} ${p.apellido||''}</div>
+          ${p.numero_documento?`<div style="font-size:12px;color:var(--sub);margin-top:2px">🪪 CC ${p.numero_documento}</div>`:''}
+          <div style="font-size:12px;color:var(--green);font-weight:700;margin-top:2px">⭐ ${p.rating_promedio} · Verificado ✓</div>
+        </div>
+      </div>
+      <div style="padding:0 14px 14px">
+        <div style="background:var(--b50);border:1px solid var(--b200);border-radius:8px;padding:10px">
+          <div style="font-size:10px;font-weight:800;color:var(--b700);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">📋 Trabajo a realizar</div>
+          <div style="font-size:13px;font-weight:600">${c.categoria?.icono||''} ${c.problema?.nombre||c.categoria?.nombre||'Servicio técnico'}</div>
+          <div style="font-size:12px;color:var(--sub);margin-top:2px">${c.descripcion||''}</div>
+          ${c.costo_estimado?`<div style="font-size:13px;font-weight:800;color:var(--green);margin-top:4px">💰 Costo estimado: $${Math.round(c.costo_estimado).toLocaleString('es-CO')}</div>`:''}
+        </div>
+      </div>
+    </div>`;
   }
 
   // Rating
   let rating='';
   if(c.estado==='completado'&&!c.calificacion_inquilino){
-    rating=`<div style="text-align:center;padding:10px;background:var(--goldbg);border:1px solid var(--yb);border-radius:7px;margin-top:6px"><div style="font-size:12px;font-weight:800;margin-bottom:4px">⭐ Califica el servicio</div><div style="display:flex;justify-content:center;gap:8px">${[1,2,3,4,5].map(n=>`<button style="font-size:12px;background:none;border:none;cursor:pointer" onclick="clientRate('${c.id}',${n})">⭐</button>`).join('')}</div></div>`;
+    rating=`<div style="text-align:center;padding:12px;background:var(--goldbg);border:1px solid var(--yb);border-radius:10px;margin-top:8px"><div style="font-size:14px;font-weight:800;margin-bottom:6px">⭐ Califica el servicio</div><div style="display:flex;justify-content:center;gap:10px">${[1,2,3,4,5].map(n=>`<button style="font-size:28px;background:none;border:none;cursor:pointer;padding:4px" onclick="clientRate('${c.id}',${n})">⭐</button>`).join('')}</div></div>`;
   }
-  if(c.calificacion_inquilino) rating=`<div style="text-align:center;font-size:12px;color:var(--green);font-weight:700;margin-top:4px">${'⭐'.repeat(c.calificacion_inquilino)}</div>`;
+  if(c.calificacion_inquilino) rating=`<div style="text-align:center;font-size:16px;color:var(--green);font-weight:700;margin-top:6px">${'⭐'.repeat(c.calificacion_inquilino)} Calificado</div>`;
 
   const eid=prefix+'_'+c.id;
   return `<div class="exp" id="ec_${eid}">
     <div class="exph" onclick="toggleExpand('${eid}')">
-      <span style="font-size:12px">${ex.i||'📩'}</span>
+      <span style="font-size:22px">${ex.i||'📩'}</span>
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"><span class="tkn">${tk(c.numero_caso)}</span>${uBadge(c.urgencia)}</div>
         <div style="font-size:14px;font-weight:700;margin-top:2px">${ex.t||c.estado}</div>
