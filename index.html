@@ -178,7 +178,19 @@ header{position:sticky;top:0;z-index:100;background:var(--hdr);backdrop-filter:b
 const SU='https://keasjfgcjkskvdcudoml.supabase.co';
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtlYXNqZmdjamtza3ZkY3Vkb21sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MjIwNDQsImV4cCI6MjA4OTE5ODA0NH0.BfZy552V_WaYITcqWazQaIUHEBAtXA5tJiN_GPWRegw';
 const CN='dfelsbmbo',CP='fichas_unsigned';
+const _CASES_Q='*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)';
+// Custom fetch that busts browser cache
+const _origFetch=window.fetch;
+window.fetch=function(url,opts={}){
+  if(typeof url==='string'&&url.includes('supabase.co')){
+    opts.headers={...(opts.headers||{}),'Cache-Control':'no-cache','Pragma':'no-cache','X-Bust':Date.now().toString()};
+    opts.cache='no-store';
+  }
+  return _origFetch.call(this,url,opts);
+};
 const SB=window.supabase.createClient(SU,SK);
+async function fetchCases(){const{data,error}=await SB.from('pv_casos').select(_CASES_Q).order('created_at',{ascending:false});if(error)console.error('fetchCases error:',error);return data||[]}
+async function fetchCaseById(id){const{data}=await SB.from('pv_casos').select(_CASES_Q).eq('id',id).single();return data}
 
 /* ═══ STATE ═══ */
 let U=null;
@@ -339,7 +351,7 @@ function startPoll(){
     try{
       // Reload cases + alerts
       const[c1,c8]=await Promise.all([
-        SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false}),
+        SB.from('pv_casos').select(_CASES_Q).order('created_at',{ascending:false}),
         SB.from('pv_alertas').select('*').order('created_at',{ascending:false}).limit(30)
       ]);
       D.casos=c1.data||[];
@@ -416,7 +428,7 @@ function ren(s){
 async function loadAllData(){
   try{
     const[c1,c2,c3,c4,c5,c6,c7,c8]=await Promise.all([
-      SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false}),
+      SB.from('pv_casos').select(_CASES_Q).order('created_at',{ascending:false}),
       SB.from('pv_propiedades').select('*,propietario:pv_propietarios(id,nombre,apellido,telefono_principal)').eq('activo',true),
       SB.from('pv_inquilinos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,codigo_interno)').eq('activo',true),
       SB.from('pv_profesionales').select('*').eq('activo',true).order('nombre'),
@@ -675,7 +687,7 @@ async function openCasoAdmin(id){
   $('mdl').style.display='flex';document.body.style.overflow='hidden';
 }
 
-async function changeEstado(id,estado){await SB.from('pv_casos').update({estado}).eq('id',id);toast('✅');cm();const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});D.casos=data||[];const cur=document.querySelector('.mi.act')?.dataset.s;if(cur)ren(cur)}
+async function changeEstado(id,estado){await SB.from('pv_casos').update({estado}).eq('id',id);toast('✅');cm();D.casos=await fetchCases();const cur=document.querySelector('.mi.act')?.dataset.s;if(cur)ren(cur)}
 
 async function assignProf(casoId,isReassign){
   const pId=$('selProf')?.value;if(!pId)return toast('Selecciona un civil','twarn');
@@ -701,12 +713,12 @@ async function approveAssignment(id){
   await SB.from('pv_alertas').insert({tipo:'aprobacion',nivel:'verde',titulo:'✅ Tu solicitud fue aprobada',mensaje:'El profesional '+(c?.profesional?.nombre||'')+' puede proceder.',caso_id:id,para_rol:'civil'});
   await SB.from('pv_alertas').insert({tipo:'asignacion',nivel:'verde',titulo:'👤 Profesional asignado',mensaje:(c?.profesional?.nombre||'')+' fue asignado a tu caso.',caso_id:id,para_rol:'usuario'});
   toast('✅ Aprobado');cm();
-  const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});D.casos=data||[];ren('dash');
+  D.casos=await fetchCases();ren('dash');
 }
 async function rejectAssignment(id){
   await SB.from('pv_casos').update({pendiente_aprobacion:false,profesional_id:null,estado:'reportado'}).eq('id',id);
   toast('❌ Rechazado');cm();
-  const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});D.casos=data||[];ren('dash');
+  D.casos=await fetchCases();ren('dash');
 }
 
 async function changeResp(id,v){await SB.from('pv_casos').update({responsable_pago:v}).eq('id',id);toast('✅')}
@@ -728,7 +740,7 @@ async function saveNewCaso(){
   if(error)return toast('Error: '+error.message,'terr');
   await SB.from('pv_alertas').insert({tipo:'caso_nuevo',nivel:prob?.urgencia_auto==='emergencia'?'rojo':'amarillo',titulo:'🚨 '+(prob?.nombre||'Nuevo reporte'),mensaje:tk(nc.numero_caso)+' creado',caso_id:nc.id,para_rol:'postventa'});
   toast('📩 Caso creado');cm();
-  const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});D.casos=data||[];go('casos');
+  D.casos=await fetchCases();go('casos');
 }
 
 /* ═══════════════════════════════════════════
@@ -757,7 +769,7 @@ async function takeOrder(casoId){
   await SB.from('pv_alertas').insert({tipo:'solicitud_aprobacion',nivel:'amarillo',titulo:'⏳ '+prof.nombre+' quiere tomar '+tk(D.casos.find(x=>x.id===casoId)?.numero_caso||0),mensaje:'Civil solicita aprobación para este caso.'+(price?' Costo: $'+price.toLocaleString('es-CO'):''),caso_id:casoId,para_rol:'postventa'});
   await SB.from('pv_mensajes').insert({caso_id:casoId,autor_tipo:'sistema',autor_nombre:'Sistema',mensaje:'⏳ '+prof.nombre+' solicitó tomar esta orden. Pendiente aprobación de postventa.',canal:'servicio'});
   toast('✅ Solicitud enviada — esperando aprobación de postventa');
-  const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});D.casos=data||[];go('mis_trabajos');
+  D.casos=await fetchCases();go('mis_trabajos');
 }
 
 function rMisTrabajos(){
@@ -792,7 +804,7 @@ function rMiHist(){
 
 async function civilChangeState(id,estado){
   await SB.from('pv_casos').update({estado}).eq('id',id);toast('✅');
-  const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});D.casos=data||[];rMisTrabajos();
+  D.casos=await fetchCases();rMisTrabajos();
 }
 
 async function civilComplete(id){
@@ -800,7 +812,7 @@ async function civilComplete(id){
   if(!ok)return;
   const cfEl=$('cf_'+id);const cf=cfEl?parseInt(cfEl.value)||0:0;
   try{await SB.from('pv_casos').update({estado:'completado',costo_final:cf||null}).eq('id',id);toast('✅ Completado');
-  const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});D.casos=data||[];rMisTrabajos();}
+  D.casos=await fetchCases();rMisTrabajos();}
   catch(e){toast('Faltan fotos o checklist','twarn')}
 }
 
@@ -936,7 +948,7 @@ function loadClientChats(cases){
 async function clientRate(id,n){
   await SB.from('pv_casos').update({calificacion_inquilino:n}).eq('id',id);
   toast('⭐ ¡Gracias por calificar!');
-  const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});D.casos=data||[];
+  D.casos=await fetchCases();
   rMiInmueble();
 }
 
@@ -1057,10 +1069,18 @@ async function saveClientReport(inqId, propId){
   // Show success mega alert
   megaAlert('¡Solicitud recibida!','Tu ticket es '+tk(nc.numero_caso)+'. Ya nos ponemos a trabajar para solucionarlo.','info','Entendido');
 
-  // Reload data and go to mis reportes
-  const{data}=await SB.from('pv_casos').select('*,propiedad:pv_propiedades(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias(id,nombre,icono),problema:pv_problemas(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)').order('created_at',{ascending:false});
-  D.casos=data||[];
-  console.log('After reload, cases:',D.casos.length,'My inq:',myInq()?.id);
+  // FIX: Fetch the specific new case by ID (avoids cache issues)
+  await new Promise(r=>setTimeout(r,500)); // Small delay for DB commit
+  const freshCase=await fetchCaseById(nc.id);
+  if(freshCase){
+    D.casos.unshift(freshCase);
+    console.log('New case added manually. Total cases:',D.casos.length);
+  }
+  // Also do a full background reload after 2s to sync everything
+  setTimeout(async()=>{
+    const{data:allCases}=await SB.from('pv_casos').select(_CASES_Q).order('created_at',{ascending:false}).limit(200);
+    if(allCases&&allCases.length>0){D.casos=allCases;console.log('Background sync done. Cases:',D.casos.length)}
+  },2000);
   go('mis_rep');
 }
 
