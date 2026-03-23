@@ -445,21 +445,29 @@ async function loadAllData(){
 }
 
 /* ═══ CHAT HTML (shared utility) ═══ */
-function buildChat(msgs, canal, casoId){
-  const qrs = canal==='servicio'
-    ? ['¿Hay mascota?','¿Parqueadero disponible?','Necesito repuesto']
-    : ['¿Cuánto se demora?','Necesito reprogramar','Gracias por la gestión'];
-  const uid = canal+'_'+casoId.slice(0,8);
+function buildUnifiedChat(msgs, casoId, prefix){
+  const uid = prefix+'_'+casoId.slice(0,8);
+  const qrs = U.rol==='usuario'?['¿Cuánto se demora?','Necesito reprogramar','Gracias']
+    : U.rol==='civil'?['¿Hay mascota?','¿Parqueadero?','Necesito repuesto','Voy en camino']
+    : ['Estamos gestionando','Profesional asignado','¿Puede enviar foto?'];
   let h = `<div class="chatbox">`;
-  if(!msgs.length) h += `<div style="text-align:center;color:var(--g400);font-size:9px;padding:10px">Sin mensajes aún</div>`;
+  if(!msgs.length) h += `<div style="text-align:center;color:var(--g400);font-size:9px;padding:10px">Sin mensajes aún — inicia la conversación</div>`;
   else msgs.forEach(m=>{
-    const cls = m.autor_tipo==='sistema'?'sys' : m.autor_tipo==='inquilino'?'inq' : m.autor_tipo==='profesional'?'prof r' : 'adm r';
-    h += `<div class="cmsg ${cls}"><div class="cbub">${m.mensaje}</div><div class="cmeta">${m.autor_nombre} · ${new Date(m.created_at).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>`;
+    let cls,rolLabel,rolColor;
+    if(m.autor_tipo==='sistema'){cls='sys';rolLabel='Sistema';rolColor='var(--g400)'}
+    else if(m.autor_tipo==='inquilino'){cls='inq';rolLabel='👤 Cliente';rolColor='var(--b500)'}
+    else if(m.autor_tipo==='profesional'){cls='prof r';rolLabel='🔧 Civil';rolColor='var(--green)'}
+    else{cls='adm r';rolLabel='🏢 Postventa';rolColor='var(--purple)'}
+    h += `<div class="cmsg ${cls}"><div style="font-size:7px;font-weight:800;color:${rolColor};margin-bottom:1px">${rolLabel}</div><div class="cbub">${m.mensaje}</div><div class="cmeta">${m.autor_nombre} · ${new Date(m.created_at).toLocaleString('es-CO',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>`;
   });
   h += `</div>`;
   h += `<div class="qrw">${qrs.map(q=>`<span class="qr" onclick="document.getElementById('ci_${uid}').value='${q}'">${q}</span>`).join('')}</div>`;
-  h += `<div class="cinp"><textarea id="ci_${uid}" placeholder="Escribir mensaje..."></textarea><button class="bt bsm bp" onclick="sendChat('${casoId}','${canal}','ci_${uid}')">→</button></div>`;
+  h += `<div class="cinp"><textarea id="ci_${uid}" placeholder="Escribir mensaje..."></textarea><button class="bt bsm bp" onclick="sendChat('${casoId}','servicio','ci_${uid}')">→</button></div>`;
   return h;
+}
+
+function buildChat(msgs, canal, casoId){
+  return buildUnifiedChat(msgs, casoId, canal);
 }
 
 async function sendChat(casoId, canal, inputId){
@@ -646,13 +654,10 @@ async function openCasoAdmin(id){
   // Checklist
   if(ck.length) b+=`<div class="msc"><div class="msct">✅ Checklist (${ck.filter(i=>i.completado).length}/${ck.length})</div>${ck.map(i=>`<div class="cki"><div class="ckb ${i.completado?'dn':''}" onclick="toggleCheck('${i.id}','${id}')">${i.completado?'✓':''}</div><div class="cktx ${i.completado?'dn':''}">${i.item}</div>${i.obligatorio?'<span style="font-size:7px;color:var(--red);font-weight:700">REQ</span>':''}</div>`).join('')}</div>`;
 
-  // Chat (dual channels)
-  const msSrv=ms.filter(m=>m.canal!=='administrativo');
-  const msAdm=ms.filter(m=>m.canal==='administrativo');
-  b+=`<div class="msc"><div class="msct">💬 Chat</div>`;
-  b+=`<div class="tabs"><button class="tab act" onclick="$('chSrv_m').style.display='block';$('chAdm_m').style.display='none';this.classList.add('act');this.nextElementSibling.classList.remove('act')">Técnico (${msSrv.length})</button><button class="tab" onclick="$('chAdm_m').style.display='block';$('chSrv_m').style.display='none';this.classList.add('act');this.previousElementSibling.classList.remove('act')">Inmobiliaria (${msAdm.length})</button></div>`;
-  b+=`<div id="chSrv_m">${buildChat(msSrv,'servicio',id)}</div>`;
-  b+=`<div id="chAdm_m" style="display:none">${buildChat(msAdm,'administrativo',id)}</div></div>`;
+  // Chat (unified - all participants)
+  b+=`<div class="msc"><div class="msct">💬 Chat (${ms.length})</div>`;
+  b+=buildUnifiedChat(ms,'adm_'+id,'adm');
+  b+=`</div>`;
 
   // Actions
   if(!['cerrado','rechazado','cancelado'].includes(c.estado)){
@@ -783,8 +788,8 @@ function rMisTrabajos(){
   el.innerHTML=h;
   // Load chats (non-blocking)
   mc.forEach(c=>{
-    SB.from('pv_mensajes').select('*').eq('caso_id',c.id).eq('canal','servicio').order('created_at')
-      .then(({data:ms})=>{const chatEl=$('civilChat_'+c.id);if(chatEl)chatEl.innerHTML=buildChat(ms||[],'servicio',c.id)})
+    SB.from('pv_mensajes').select('*').eq('caso_id',c.id).order('created_at')
+      .then(({data:ms})=>{const chatEl=$('civilChat_'+c.id);if(chatEl)chatEl.innerHTML=buildUnifiedChat(ms||[],c.id,'civ')})
       .catch(e=>console.warn('Chat load error:',e));
   });
 }
@@ -833,7 +838,7 @@ function rMiInmueble(){
   // Active cases
   if(mc.length){
     h+=`<div style="font-family:Fraunces,serif;font-size:14px;font-weight:700;margin-bottom:6px">Casos activos (${mc.length})</div>`;
-    mc.forEach((c,i)=> h += buildExpandableCase(c, i===0));
+    mc.forEach((c,i)=> h += buildExpandableCase(c, i===0, 'inm'));
   }
 
   // Closed
@@ -844,7 +849,7 @@ function rMiInmueble(){
 
   el.innerHTML=h;
   // Load chats for active cases (non-blocking)
-  loadClientChats(mc);
+  loadClientChats(mc,'inm');
 }
 
 function rMisReportes(){
@@ -855,12 +860,13 @@ function rMisReportes(){
 
   let h=`<div style="font-family:Fraunces,serif;font-size:14px;font-weight:700;margin-bottom:8px">Mis reportes (${todos.length})</div>`;
   if(!todos.length){el.innerHTML=h+'<div class="emp"><h3>Aún no has reportado nada</h3><p>Usa el botón en Mi inmueble</p></div>';return}
-  todos.forEach((c,i)=> h += buildExpandableCase(c, i===0));
+  todos.forEach((c,i)=> h += buildExpandableCase(c, i===0, 'rep'));
   el.innerHTML=h;
-  loadClientChats(todos);
+  loadClientChats(todos,'rep');
 }
 
-function buildExpandableCase(c, open){
+function buildExpandableCase(c, open, prefix){
+  prefix = prefix||'x';
   const ex=ETXT[c.estado]||{};
   const steps=['reportado','validado','asignado','en_camino','en_ejecucion','completado','cerrado'];
   const ci=steps.indexOf(c.estado);
@@ -891,8 +897,9 @@ function buildExpandableCase(c, open){
   }
   if(c.calificacion_inquilino) rating=`<div style="text-align:center;font-size:11px;color:var(--green);font-weight:700;margin-top:4px">${'⭐'.repeat(c.calificacion_inquilino)}</div>`;
 
-  return `<div class="exp" id="ec_${c.id}">
-    <div class="exph" onclick="toggleExpand('${c.id}')">
+  const eid=prefix+'_'+c.id;
+  return `<div class="exp" id="ec_${eid}">
+    <div class="exph" onclick="toggleExpand('${eid}')">
       <span style="font-size:18px">${ex.i||'📩'}</span>
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"><span class="tkn">${tk(c.numero_caso)}</span>${uBadge(c.urgencia)}</div>
@@ -903,7 +910,7 @@ function buildExpandableCase(c, open){
     </div>
     <div class="expb ${open?'show':''}">
       ${tl}${profInfo}${rating}
-      <div style="margin-top:8px" id="clientChat_${c.id}"><div style="color:var(--g400);font-size:9px">Cargando chat...</div></div>
+      <div style="margin-top:8px" id="chat_${eid}"><div style="color:var(--g400);font-size:9px">Cargando chat...</div></div>
     </div>
   </div>`;
 }
@@ -915,25 +922,19 @@ function toggleExpand(id){
   if(a)a.classList.toggle('open');
 }
 
-function loadClientChats(cases){
+function loadClientChats(cases, prefix){
+  prefix = prefix||'x';
   cases.forEach(c=>{
+    const eid=prefix+'_'+c.id;
     SB.from('pv_mensajes').select('*').eq('caso_id',c.id).order('created_at')
       .then(({data:ms})=>{
-        const msSrv=(ms||[]).filter(m=>m.canal!=='administrativo');
-        const msAdm=(ms||[]).filter(m=>m.canal==='administrativo');
-        const chatEl=$('clientChat_'+c.id);
+        const chatEl=$('chat_'+eid);
         if(!chatEl)return;
-        chatEl.innerHTML=`
-          <div class="tabs">
-            <button class="tab act" onclick="this.classList.add('act');this.nextElementSibling.classList.remove('act');this.parentElement.nextElementSibling.style.display='block';this.parentElement.nextElementSibling.nextElementSibling.style.display='none'">Técnico (${msSrv.length})</button>
-            <button class="tab" onclick="this.classList.add('act');this.previousElementSibling.classList.remove('act');this.parentElement.nextElementSibling.style.display='none';this.parentElement.nextElementSibling.nextElementSibling.style.display='block'">Inmobiliaria (${msAdm.length})</button>
-          </div>
-          <div>${buildChat(msSrv,'servicio',c.id)}</div>
-          <div style="display:none">${buildChat(msAdm,'administrativo',c.id)}</div>`;
+        chatEl.innerHTML=buildUnifiedChat(ms||[], c.id, prefix);
       })
       .catch(e=>{
-        console.warn('Client chat load error for',c.id,e);
-        const chatEl=$('clientChat_'+c.id);
+        console.warn('Chat load error for',c.id,e);
+        const chatEl=$('chat_'+eid);
         if(chatEl) chatEl.innerHTML='<div style="color:var(--g400);font-size:9px">Chat no disponible</div>';
       });
   });
