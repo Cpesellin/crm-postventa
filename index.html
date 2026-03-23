@@ -206,7 +206,7 @@ header{position:sticky;top:0;z-index:100;background:var(--hdr);backdrop-filter:b
 const SU='https://keasjfgcjkskvdcudoml.supabase.co';
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtlYXNqZmdjamtza3ZkY3Vkb21sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MjIwNDQsImV4cCI6MjA4OTE5ODA0NH0.BfZy552V_WaYITcqWazQaIUHEBAtXA5tJiN_GPWRegw';
 const CN='dfelsbmbo',CP='fichas_unsigned';
-const _CASES_Q='*,propiedad:pv_propiedades!propiedad_id(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos!inquilino_id(id,nombre,apellido,telefono_principal,email,usuario_id),profesional:pv_profesionales!profesional_id(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias!categoria_id(id,nombre,icono),problema:pv_problemas!problema_id(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)';
+const _CASES_Q='*,propiedad:pv_propiedades!propiedad_id(id,tipo,direccion,ciudad,barrio,codigo_interno),inquilino:pv_inquilinos!inquilino_id(id,nombre,apellido,telefono_principal,email,usuario_id,hora_preferida),profesional:pv_profesionales!profesional_id(id,nombre,apellido,telefono_principal,especialidades,rating_promedio,usuario_id,foto,numero_documento),categoria:pv_categorias!categoria_id(id,nombre,icono),problema:pv_problemas!problema_id(id,nombre,urgencia_auto,sla_horas,alerta_seguridad)';
 const SB=window.supabase.createClient(SU,SK);
 async function fetchCases(){const{data,error}=await SB.from('pv_casos').select(_CASES_Q).order('created_at',{ascending:false});if(error)console.error('fetchCases error:',error);return data||[]}
 async function fetchCaseById(id){const{data}=await SB.from('pv_casos').select(_CASES_Q).eq('id',id).single();return data}
@@ -228,10 +228,10 @@ const EST=[
 
 const ETXT={
   reportado:{i:'📩',t:'Reporte recibido',d:'Tu reporte fue recibido. Estamos revisando tu solicitud.'},
-  validado:{i:'✅',t:'Caso validado',d:'Tu caso fue revisado. Buscamos al profesional indicado.'},
-  asignado:{i:'👤',t:'Profesional asignado',d:'Ya tienes profesional asignado. Pronto irá a tu inmueble.'},
-  en_camino:{i:'🚗',t:'En camino',d:'El profesional va hacia tu inmueble.'},
-  en_ejecucion:{i:'🔧',t:'Reparación en curso',d:'El profesional está trabajando en la reparación.'},
+  validado:{i:'✅',t:'Caso validado',d:'Tu caso fue revisado. Buscamos al civil indicado.'},
+  asignado:{i:'👤',t:'¡Civil aprobado!',d:'Te asignaron un civil verificado. Pronto irá a tu inmueble.'},
+  en_camino:{i:'🚗',t:'En camino',d:'El civil va en camino hacia tu inmueble.'},
+  en_ejecucion:{i:'🔧',t:'Reparación en curso',d:'El civil está trabajando en la reparación.'},
   completado:{i:'✅',t:'Completado',d:'La reparación fue completada. Por favor califica.'},
   cerrado:{i:'🏁',t:'Cerrado',d:'Caso cerrado con éxito. Garantía activa.'}
 };
@@ -516,7 +516,7 @@ function renderFSMsgs(msgs){
 }
 
 function renderFSInput(){
-  const qrs=U.rol==='usuario'?['¿Cuánto demora?','Reprogramar','Gracias 🙏']:U.rol==='civil'?['¿Mascota?','Necesito repuesto','Voy en camino 🚗']:['Estamos gestionando','Profesional asignado','Envíe foto 📷'];
+  const qrs=U.rol==='usuario'?['¿Cuánto demora?','Reprogramar','Gracias 🙏']:U.rol==='civil'?['¿Mascota?','Necesito repuesto','Voy en camino 🚗']:['Estamos gestionando','Civil asignado','Envíe foto 📷'];
   let h=`<div class="qrw">${qrs.map(q=>`<span class="qr" onclick="$('chatFSInput').value+='${q}'">${q}</span>`).join('')}</div>`;
   h+=`<div class="emoji-pk" id="chatEmojiPk">${EMOJIS.map(e=>`<span onclick="$('chatFSInput').value+='${e}'">${e}</span>`).join('')}</div>`;
   h+=`<div class="chat-bar"><button class="att-btn" onclick="$('chatEmojiPk').classList.toggle('show')">😊</button><button class="att-btn" onclick="$('chatFileInp').click()">📎</button><input type="file" id="chatFileInp" accept="image/*,video/*" style="display:none" onchange="sendFSMedia(this.files[0])"><textarea id="chatFSInput" placeholder="Escribe un mensaje..." onkeypress="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendFSMsg()}"></textarea><button class="send-btn" onclick="sendFSMsg()">➤</button></div>`;
@@ -559,21 +559,42 @@ function rPerfil(){
     const prof = myProf();
     const currentPhoto = prof?.foto;
     photoSection = `<div class="ff"><label class="ffl">Foto de perfil</label>${currentPhoto?`<img src="${currentPhoto}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;margin-bottom:6px">`:''}
-    <div class="fzone" onclick="$('pfPhotoInp').click()" style="padding:8px"><div style="font-size:17px;color:var(--sub)">📷 ${currentPhoto?'Cambiar foto':'Subir foto'}</div></div>
+    <div class="fzone" onclick="$('pfPhotoInp').click()" style="padding:8px"><div style="font-size:13px;color:var(--sub)">📷 ${currentPhoto?'Cambiar foto':'Subir foto'}</div></div>
     <input type="file" id="pfPhotoInp" accept="image/*" style="display:none" onchange="uploadPfPhoto(this.files[0])"></div>
     <div class="ff"><label class="ffl">Número de cédula</label><input class="ffi" id="pf_ced" value="${prof?.numero_documento||''}"></div>`;
   }
+  let availSection='';
+  if(U.rol==='usuario'){
+    const inq=myInq();
+    availSection=`<div style="margin-top:6px;padding:10px;background:var(--greenbg);border:1px solid var(--gb);border-radius:8px">
+      <div style="font-size:11px;font-weight:800;color:#065f46;margin-bottom:6px">🕐 HORARIOS DE DISPONIBILIDAD</div>
+      <div style="font-size:11px;color:#065f46;margin-bottom:8px">Para que el civil no pierda el viaje</div>
+      <div class="ff"><label class="ffl">Horario preferido para visitas</label>
+        <select class="ffi" id="pf_hora_pref">
+          <option value="">Sin preferencia</option>
+          <option ${inq?.hora_preferida==='7:00 AM - 10:00 AM'?'selected':''}>7:00 AM - 10:00 AM</option>
+          <option ${inq?.hora_preferida==='10:00 AM - 1:00 PM'?'selected':''}>10:00 AM - 1:00 PM</option>
+          <option ${inq?.hora_preferida==='1:00 PM - 4:00 PM'?'selected':''}>1:00 PM - 4:00 PM</option>
+          <option ${inq?.hora_preferida==='4:00 PM - 7:00 PM'?'selected':''}>4:00 PM - 7:00 PM</option>
+          <option ${inq?.hora_preferida==='Lunes a Viernes 8 AM - 5 PM'?'selected':''}>Lunes a Viernes 8 AM - 5 PM</option>
+          <option ${inq?.hora_preferida==='Solo fines de semana'?'selected':''}>Solo fines de semana</option>
+          <option ${inq?.hora_preferida==='Cualquier hora'?'selected':''}>Cualquier hora</option>
+        </select>
+      </div>
+    </div>`;
+  }
   el.innerHTML=`<div style="text-align:center;padding:16px;background:var(--cd);border:1px solid var(--brd);border-radius:var(--r);margin-bottom:10px">
-    <div style="width:48px;height:48px;border-radius:50%;background:var(--b50);border:2px solid var(--b200);display:flex;align-items:center;justify-content:center;font-size:12px;margin:0 auto 8px">👤</div>
-    <div style="font-family:Fraunces,serif;font-size:12px;font-weight:800">${U.nombre}</div>
-    <div style="font-size:17px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-top:2px">${U.rol}</div>
+    <div style="width:56px;height:56px;border-radius:50%;background:var(--b50);border:2px solid var(--b200);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 8px">👤</div>
+    <div style="font-family:Fraunces,serif;font-size:18px;font-weight:800">${U.nombre}</div>
+    <div style="font-size:12px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;margin-top:2px">${U.rol}</div>
   </div>
   <div class="card"><div class="cdb">
     ${photoSection}
     <div class="ff"><label class="ffl">Nombre</label><input class="ffi" id="pf_nom" value="${U.nombre||''}"></div>
     <div class="ff"><label class="ffl">Teléfono principal</label><input class="ffi" id="pf_tel" type="tel" value="${U.telefono||''}"></div>
     <div class="ff"><label class="ffl">Teléfono secundario</label><input class="ffi" id="pf_tel2" type="tel" value="${U.telefono_secundario||''}" placeholder="Opcional"></div>
-    <button class="bt bp" style="width:100%" onclick="savePerfil()">💾 Guardar cambios</button>
+    ${availSection}
+    <button class="bt bp" style="width:100%;margin-top:8px" onclick="savePerfil()">💾 Guardar cambios</button>
   </div></div>`;
 }
 
@@ -597,7 +618,11 @@ async function savePerfil(){
   sessionStorage.setItem('pv_u',JSON.stringify(U));
   $('uname').textContent=nom;$('muname').textContent=nom;
   // Sync with linked records
-  if(U.rol==='usuario'){const inq=myInq();if(inq)await SB.from('pv_inquilinos').update({nombre:nom,telefono_principal:tel}).eq('id',inq.id)}
+  if(U.rol==='usuario'){
+    const inq=myInq();
+    const horaPref=$('pf_hora_pref')?$('pf_hora_pref').value:'';
+    if(inq)await SB.from('pv_inquilinos').update({nombre:nom,telefono_principal:tel,hora_preferida:horaPref||null}).eq('id',inq.id);
+  }
   if(U.rol==='civil'){
     const prof=myProf();
     const ced=$('pf_ced')?$('pf_ced').value.trim():'';
@@ -765,7 +790,7 @@ async function assignProf(casoId,isReassign){
   }
   await SB.from('pv_casos').update(upd).eq('id',casoId);
   const prof=D.profs.find(p=>p.id===pId);
-  await SB.from('pv_alertas').insert({tipo:'asignacion',nivel:'verde',titulo:'👤 '+(prof?.nombre||'')+' asignado a tu caso',mensaje:'Un profesional fue asignado para atenderte.',caso_id:casoId,para_rol:'usuario'});
+  await SB.from('pv_alertas').insert({tipo:'asignacion',nivel:'verde',titulo:'👤 Civil '+(prof?.nombre||'')+' asignado a tu caso',mensaje:'Un civil verificado fue asignado para atenderte.',caso_id:casoId,para_rol:'usuario'});
   toast('✅');cm();
   await changeEstado(casoId,'asignado');
 }
@@ -773,8 +798,8 @@ async function assignProf(casoId,isReassign){
 async function approveAssignment(id){
   await SB.from('pv_casos').update({pendiente_aprobacion:false,estado:'asignado'}).eq('id',id);
   const c=D.casos.find(x=>x.id===id);
-  await SB.from('pv_alertas').insert({tipo:'aprobacion',nivel:'verde',titulo:'✅ Tu solicitud fue aprobada',mensaje:'El profesional '+(c?.profesional?.nombre||'')+' puede proceder.',caso_id:id,para_rol:'civil'});
-  await SB.from('pv_alertas').insert({tipo:'asignacion',nivel:'verde',titulo:'👤 Profesional asignado',mensaje:(c?.profesional?.nombre||'')+' fue asignado a tu caso.',caso_id:id,para_rol:'usuario'});
+  await SB.from('pv_alertas').insert({tipo:'aprobacion',nivel:'verde',titulo:'✅ Tu solicitud fue aprobada',mensaje:'¡Aprobado! '+(c?.profesional?.nombre||'')+' puede proceder con la orden.',caso_id:id,para_rol:'civil'});
+  await SB.from('pv_alertas').insert({tipo:'asignacion',nivel:'verde',titulo:'👤 Civil asignado a tu caso',mensaje:(c?.profesional?.nombre||'')+' fue asignado como civil a tu caso.',caso_id:id,para_rol:'usuario'});
   toast('✅ Aprobado');cm();
   D.casos=await fetchCases();ren('dash');
 }
@@ -813,11 +838,34 @@ async function saveNewCaso(){
 function rOrdenes(){
   const el=$('sec-ordenes');if(!el)return;
   const available=D.casos.filter(c=>(c.estado==='reportado'||c.estado==='validado')&&!c.profesional_id);
-  let h=`<div style="padding:12px;background:linear-gradient(135deg,var(--purple),#7c3aed);border-radius:var(--r);margin-bottom:8px;color:#fff"><div style="font-family:Fraunces,serif;font-size:18px;font-weight:800">Órdenes disponibles</div><div style="font-size:17px;opacity:.7">${available.length} orden(es)</div></div>`;
+  let h=`<div style="padding:12px;background:linear-gradient(135deg,var(--purple),#7c3aed);border-radius:var(--r);margin-bottom:8px;color:#fff"><div style="font-family:Fraunces,serif;font-size:18px;font-weight:800">Órdenes disponibles</div><div style="font-size:12px;opacity:.7">${available.length} orden(es)</div></div>`;
   if(!available.length){h+='<div class="emp"><h3>Sin órdenes disponibles</h3><p>Cuando un cliente reporte, aparecerá aquí</p></div>';el.innerHTML=h;return}
   available.forEach(c=>{
     const mins=Math.round((Date.now()-new Date(c.created_at).getTime())/60000);
-    h+=`<div class="job ${c.urgencia==='emergencia'?'emer':c.urgencia==='urgente'?'urge':''}"><div class="jobh"><div style="display:flex;justify-content:space-between"><b>${tk(c.numero_caso)}</b>${uBadge(c.urgencia)}</div><div style="font-size:17px;font-weight:700;margin-top:2px">${c.categoria?.icono||''} ${c.problema?.nombre||''}</div>${mins>=30?`<div style="color:var(--red);font-size:12px;font-weight:800;margin-top:2px">⏰ Hace ${mins} min</div>`:''}</div><div class="jobb"><div style="display:flex;gap:6px;padding:8px;background:var(--cd2);border-radius:7px;margin-bottom:6px;font-size:12px"><span>📍</span><div><b>${c.propiedad?.direccion||'?'}</b><div style="font-size:12px;color:var(--sub)">${c.propiedad?.ciudad||''}</div></div></div><div style="font-size:17px;margin-bottom:4px">${c.descripcion}</div><div style="font-size:12px;color:var(--sub);margin-bottom:6px">👤 ${c.inquilino?.nombre||''} · 📱 ${c.inquilino?.telefono_principal||''}</div><a href="tel:${c.inquilino?.telefono_principal||''}" class="callb">📞 Llamar al inquilino</a><div class="ff"><label class="ffl">Costo estimado (opcional)</label><input class="ffi" id="price_${c.id}" type="number" placeholder="150000"></div><button class="jobbt take" onclick="takeOrder('${c.id}')">🖐 Tomar esta orden</button></div></div>`;
+    const isUrgent=c.tipo_ejecucion!=='programada';
+    h+=`<div class="job ${c.urgencia==='emergencia'?'emer':c.urgencia==='urgente'?'urge':''}">
+      <div class="jobh">
+        <div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:15px">${tk(c.numero_caso)}</b>${uBadge(c.urgencia)}</div>
+        <div style="font-size:15px;font-weight:700;margin-top:3px">${c.categoria?.icono||''} ${c.problema?.nombre||''}</div>
+        ${mins>=30?`<div style="color:var(--red);font-size:11px;font-weight:800;margin-top:2px">⏰ Hace ${mins} min sin atender</div>`:''}
+      </div>
+      <div class="jobb">
+        ${isUrgent
+          ?'<div style="padding:8px;background:var(--redbg);border:1.5px solid var(--rb);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--red);font-weight:700;text-align:center">🔴 URGENTE — Ejecutar ya</div>'
+          :`<div style="padding:8px;background:var(--b50);border:1.5px solid var(--b200);border-radius:8px;margin-bottom:6px;font-size:13px;color:var(--b700);font-weight:700;text-align:center">📅 Programada: ${c.fecha_programada||'?'} ${c.hora_programada?'a las '+c.hora_programada:''}</div>`}
+        <div style="display:flex;gap:8px;padding:10px;background:var(--cd2);border-radius:8px;margin-bottom:8px">
+          <span style="font-size:20px">📍</span>
+          <div><b style="font-size:13px">${c.propiedad?.direccion||'?'}</b><div style="font-size:11px;color:var(--sub)">${c.propiedad?.barrio||''} · ${c.propiedad?.ciudad||''}</div></div>
+        </div>
+        <div style="font-size:13px;margin-bottom:6px;line-height:1.5;padding:8px;background:var(--cd);border:1px solid var(--brd);border-radius:8px"><b style="font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:3px">Descripción del cliente</b>${c.descripcion||'Sin descripción'}</div>
+        <div style="font-size:12px;color:var(--sub);margin-bottom:4px">👤 ${c.inquilino?.nombre||''} · 📱 ${c.inquilino?.telefono_principal||''}</div>
+        ${c.inquilino?.hora_preferida?`<div style="font-size:12px;color:var(--green);margin-bottom:6px;font-weight:600">🕐 Disponible: ${c.inquilino.hora_preferida}</div>`:''}
+        <a href="tel:3001234567" class="callb" style="margin-bottom:4px">📞 Llamar a Ejecutivo Postventa</a>
+        <div class="ff"><label class="ffl">💰 Costo estimado</label><input class="ffi" id="price_${c.id}" type="number" placeholder="150000"></div>
+        <div class="ff"><label class="ffl">📝 Observaciones (materiales, aclaraciones)</label><textarea class="ffi" id="obs_${c.id}" style="min-height:50px" placeholder="Qué materiales necesito, qué herramientas llevo, aclaraciones..."></textarea></div>
+        <div class="ff"><label class="ffl">⏱ Tiempo estimado en sitio</label><select class="ffi" id="tsite_${c.id}"><option value="">Seleccionar...</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="90">1 hora 30 min</option><option value="120">2 horas</option><option value="180">3 horas</option><option value="240">Medio día</option></select></div>
+        <button class="jobbt take" onclick="takeOrder('${c.id}')">🖐 Tomar esta orden</button>
+      </div></div>`;
   });
   el.innerHTML=h;
 }
@@ -826,12 +874,19 @@ async function takeOrder(casoId){
   const prof=myProf();if(!prof)return toast('Sin perfil de civil','terr');
   const priceEl=$('price_'+casoId);
   const price=priceEl?parseInt(priceEl.value)||0:0;
-  // Set profesional but mark as pending approval
+  const obsEl=$('obs_'+casoId);
+  const obs=obsEl?obsEl.value.trim():'';
+  const tsiteEl=$('tsite_'+casoId);
+  const tsite=tsiteEl?tsiteEl.value:'';
   await SB.from('pv_casos').update({profesional_id:prof.id,pendiente_aprobacion:true,costo_estimado:price||null}).eq('id',casoId);
-  // Alert postventa for approval
-  await SB.from('pv_alertas').insert({tipo:'solicitud_aprobacion',nivel:'amarillo',titulo:'⏳ '+prof.nombre+' quiere tomar '+tk(D.casos.find(x=>x.id===casoId)?.numero_caso||0),mensaje:'Civil solicita aprobación para este caso.'+(price?' Costo: $'+price.toLocaleString('es-CO'):''),caso_id:casoId,para_rol:'postventa'});
-  await SB.from('pv_mensajes').insert({caso_id:casoId,autor_tipo:'sistema',autor_nombre:'Sistema',mensaje:'⏳ '+prof.nombre+' solicitó tomar esta orden. Pendiente aprobación de postventa.',canal:'servicio'});
-  toast('✅ Solicitud enviada — esperando aprobación de postventa');
+  const caso=D.casos.find(x=>x.id===casoId);
+  let msg='⏳ '+prof.nombre+' solicitó tomar esta orden.';
+  if(price)msg+='\n💰 Costo estimado: $'+price.toLocaleString('es-CO');
+  if(tsite)msg+='\n⏱ Tiempo en sitio: '+tsite+' min';
+  if(obs)msg+='\n📝 Observación: '+obs;
+  await SB.from('pv_alertas').insert({tipo:'solicitud_aprobacion',nivel:'amarillo',titulo:'⏳ '+prof.nombre+' quiere tomar '+tk(caso?.numero_caso||0),mensaje:msg,caso_id:casoId,para_rol:'postventa'});
+  await SB.from('pv_mensajes').insert({caso_id:casoId,autor_tipo:'sistema',autor_nombre:'Sistema',mensaje:msg,canal:'servicio'});
+  toast('✅ Solicitud enviada — esperando aprobación');
   D.casos=await fetchCases();go('mis_trabajos');
 }
 
@@ -842,16 +897,30 @@ function rMisTrabajos(){
   let h=`<div style="padding:12px;background:linear-gradient(135deg,var(--green),#059669);border-radius:var(--r);margin-bottom:8px;color:#fff"><div style="font-family:Fraunces,serif;font-size:18px;font-weight:800">Mis trabajos</div><div style="font-size:17px;opacity:.7">${mc.length} activo(s)</div></div>`;
   if(!mc.length){h+='<div class="emp"><h3>Sin trabajos asignados</h3><p>Toma una orden en "Órdenes disponibles"</p></div>';el.innerHTML=h;return}
   mc.forEach(c=>{
-    const pending=c.pendiente_aprobacion?'<div style="padding:6px;background:var(--goldbg);border:1px solid var(--yb);border-radius:6px;font-size:17px;color:#92400e;margin-bottom:6px">⏳ Esperando aprobación de postventa</div>':'';
-    h+=`<div class="job ${c.urgencia==='emergencia'?'emer':''}"><div class="jobh"><div style="display:flex;justify-content:space-between"><b>${tk(c.numero_caso)}</b>${uBadge(c.urgencia)}</div><div style="font-size:17px;font-weight:700;margin-top:2px">${c.categoria?.icono||''} ${c.problema?.nombre||''}</div></div><div class="jobb">${pending}<div style="display:flex;gap:6px;padding:8px;background:var(--cd2);border-radius:7px;margin-bottom:6px"><span>📍</span><div><b style="font-size:12px">${c.propiedad?.direccion||'?'}</b></div></div><div style="font-size:17px;margin-bottom:4px">${c.descripcion}</div><a href="tel:${c.inquilino?.telefono_principal||''}" class="callb">📞 Llamar a ${c.inquilino?.nombre||''} · ${c.inquilino?.telefono_principal||''}</a>${!c.pendiente_aprobacion?
-      (c.estado==='asignado'?`<button class="jobbt go" onclick="civilChangeState('${c.id}','en_camino')">🚗 Voy en camino</button>`:
-       c.estado==='en_camino'?`<button class="jobbt arr" onclick="civilChangeState('${c.id}','en_ejecucion')">📍 Ya llegué — Iniciar</button>`:
-       c.estado==='en_ejecucion'?`<div class="ff"><label class="ffl">Costo final</label><input class="ffi" id="cf_${c.id}" type="number" value="${c.costo_final||c.costo_estimado||''}" placeholder="Monto"></div><button class="jobbt dn" onclick="civilComplete('${c.id}')">✅ Trabajo completado</button>`:'')
-    :''}<div style="margin-top:6px"><div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:3px">💬 CHAT CON INQUILINO</div><div id="civilChat_${c.id}"><div style="color:var(--g400);font-size:11px">Cargando...</div></div></div></div></div>`;
+    const pending=c.pendiente_aprobacion?'<div style="padding:10px;background:var(--goldbg);border:1.5px solid var(--yb);border-radius:8px;font-size:13px;color:#92400e;margin-bottom:6px;text-align:center"><b>⏳ Esperando que postventa apruebe tu solicitud</b><br><span style="font-size:11px">Te notificaremos cuando sea aprobada</span></div>':'';
+    const approved=(!c.pendiente_aprobacion&&c.estado==='asignado')?'<div style="padding:10px;background:var(--greenbg);border:1.5px solid var(--gb);border-radius:8px;font-size:13px;color:#065f46;margin-bottom:6px;text-align:center"><b>✅ ¡Te aprobaron la orden '+tk(c.numero_caso)+'!</b><br><span style="font-size:11px">Ya puedes proceder — contacta al cliente</span></div>':'';
+    const schedInfo=c.tipo_ejecucion==='programada'?`<div style="padding:6px;background:var(--b50);border:1px solid var(--b200);border-radius:6px;margin-bottom:6px;font-size:12px;color:var(--b700);font-weight:700">📅 Programada: ${c.fecha_programada||'?'} ${c.hora_programada?'a las '+c.hora_programada:''}</div>`:`<div style="padding:6px;background:var(--redbg);border:1px solid var(--rb);border-radius:6px;margin-bottom:6px;font-size:12px;color:var(--red);font-weight:700">🔴 URGENTE — Ejecutar ya</div>`;
+    h+=`<div class="job ${c.urgencia==='emergencia'?'emer':''}">
+      <div class="jobh"><div style="display:flex;justify-content:space-between"><b>${tk(c.numero_caso)}</b>${uBadge(c.urgencia)}</div><div style="font-size:15px;font-weight:700;margin-top:2px">${c.categoria?.icono||''} ${c.problema?.nombre||''}</div></div>
+      <div class="jobb">
+        ${pending}${approved}${schedInfo}
+        <div style="display:flex;gap:6px;padding:8px;background:var(--cd2);border-radius:7px;margin-bottom:6px"><span>📍</span><div><b style="font-size:13px">${c.propiedad?.direccion||'?'}</b></div></div>
+        <div style="font-size:13px;margin-bottom:6px">${c.descripcion||''}</div>
+        ${c.inquilino?.hora_preferida?`<div style="font-size:11px;color:var(--green);margin-bottom:4px">🕐 Cliente disponible: ${c.inquilino.hora_preferida}</div>`:''}
+        ${c.pendiente_aprobacion?`<a href="tel:3001234567" class="callb">📞 Llamar a Ejecutivo Postventa</a>`
+        :`<a href="tel:${c.inquilino?.telefono_principal||''}" class="callb">📞 Llamar a ${c.inquilino?.nombre||'cliente'} · ${c.inquilino?.telefono_principal||''}</a>`}
+        ${!c.pendiente_aprobacion?
+          (c.estado==='asignado'?`<button class="jobbt go" onclick="confirmEnCamino('${c.id}')">🚗 Voy en camino</button>`:
+           c.estado==='en_camino'?`<button class="jobbt arr" onclick="civilChangeState('${c.id}','en_ejecucion')">📍 Ya llegué — Iniciar</button>`:
+           c.estado==='en_ejecucion'?`<div class="ff"><label class="ffl">Costo final</label><input class="ffi" id="cf_${c.id}" type="number" value="${c.costo_final||c.costo_estimado||''}" placeholder="Monto"></div><button class="jobbt dn" onclick="civilComplete('${c.id}')">✅ Trabajo completado</button>`:'')
+        :''}
+        ${!c.pendiente_aprobacion?`<div style="margin-top:6px"><div id="civilChat_${c.id}"><div style="color:var(--g400);font-size:11px">Cargando chat...</div></div></div>`
+        :'<div style="font-size:11px;color:var(--g400);text-align:center;padding:8px">💬 El chat se habilitará cuando postventa apruebe la orden</div>'}
+      </div></div>`;
   });
   el.innerHTML=h;
-  // Load chats (non-blocking)
-  mc.forEach(c=>{
+  // Load chats only for approved cases (non-blocking)
+  mc.filter(c=>!c.pendiente_aprobacion).forEach(c=>{
     SB.from('pv_mensajes').select('*').eq('caso_id',c.id).order('created_at')
       .then(({data:ms})=>{const chatEl=$('civilChat_'+c.id);if(chatEl)chatEl.innerHTML=buildUnifiedChat(ms||[],c.id,'civ')})
       .catch(e=>console.warn('Chat load error:',e));
@@ -867,6 +936,32 @@ function rMiHist(){
 
 async function civilChangeState(id,estado){
   await SB.from('pv_casos').update({estado}).eq('id',id);toast('✅');
+  D.casos=await fetchCases();rMisTrabajos();
+}
+
+function confirmEnCamino(casoId){
+  const c=D.casos.find(x=>x.id===casoId);
+  const html=`<div class="cfdlg" id="caminoDlg">
+    <div class="cfbox" style="max-width:340px">
+      <div class="cfi">🚗</div>
+      <div class="cft">¿Vas en camino?</div>
+      <div class="cfm">¿Cuánto tiempo te toma llegar al inmueble?</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+        ${[15,30,45,60,75,90].map(m=>`<button class="bt bsm" style="padding:10px;font-size:13px;background:var(--cd2);border:2px solid var(--brd);color:var(--tx)" onclick="execEnCamino('${casoId}',${m})">${m<60?m+' min':Math.floor(m/60)+'h'+(m%60?' '+m%60+'min':'')}</button>`).join('')}
+      </div>
+      <button class="bt bd" style="width:100%" onclick="$('caminoDlg').remove()">Cancelar</button>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+
+async function execEnCamino(casoId,minutos){
+  const el=$('caminoDlg');if(el)el.remove();
+  await SB.from('pv_casos').update({estado:'en_camino',tiempo_llegada_min:minutos}).eq('id',casoId);
+  const c=D.casos.find(x=>x.id===casoId);
+  await SB.from('pv_mensajes').insert({caso_id:casoId,autor_tipo:'sistema',autor_nombre:'Sistema',mensaje:'🚗 El civil va en camino. Tiempo estimado de llegada: '+(minutos<60?minutos+' minutos':Math.floor(minutos/60)+'h'+(minutos%60?' '+minutos%60+'min':'')),canal:'servicio'});
+  await SB.from('pv_alertas').insert({tipo:'estado',nivel:'verde',titulo:'🚗 Civil en camino — '+tk(c?.numero_caso||0),mensaje:'Llega en aprox. '+minutos+' min',caso_id:casoId,para_rol:'usuario'});
+  toast('🚗 En camino — '+minutos+' min');
   D.casos=await fetchCases();rMisTrabajos();
 }
 
@@ -998,7 +1093,10 @@ function buildExpandableCase(c, open, prefix){
       <span class="expa ${open?'open':''}">›</span>
     </div>
     <div class="expb ${open?'show':''}">
-      ${tl}${profInfo}${rating}
+      ${tl}${profInfo}
+      ${c.estado==='en_camino'&&c.tiempo_llegada_min?`<div style="margin-top:6px;padding:10px;background:linear-gradient(135deg,#25D366,#128C7E);border-radius:8px;color:#fff;text-align:center;font-size:14px"><b>🚗 El civil va en camino</b><br>Llega en aprox. <b>${c.tiempo_llegada_min<60?c.tiempo_llegada_min+' minutos':Math.floor(c.tiempo_llegada_min/60)+'h'+(c.tiempo_llegada_min%60?' '+c.tiempo_llegada_min%60+'min':'')}</b></div>`:''}
+      ${c.tipo_ejecucion==='programada'&&c.fecha_programada?`<div style="margin-top:6px;padding:8px;background:var(--b50);border:1.5px solid var(--b200);border-radius:8px;font-size:12px;color:var(--b700);font-weight:600;text-align:center">📅 Visita programada: ${c.fecha_programada} ${c.hora_programada?'a las '+c.hora_programada:''}</div>`:''}
+      ${rating}
       <div style="margin-top:8px" id="chat_${eid}"><div style="color:var(--g400);font-size:12px">Cargando chat...</div></div>
     </div>
   </div>`;
@@ -1053,6 +1151,17 @@ function clientReport(inqId, propId){
       <textarea class="ffi" id="cr_desc" style="min-height:60px" placeholder="Explica qué pasó, desde cuándo, qué tan grave es..."></textarea></div>
     <div class="ff"><label class="ffl">¿Dónde exactamente?</label>
       <input class="ffi" id="cr_ubic" placeholder="Baño principal, cocina..."></div>
+    <div class="ff"><label class="ffl">¿Es urgente? <span class="ffr">*</span></label>
+      <div style="display:flex;gap:6px">
+        <button type="button" id="btnUrg" class="bt bp" style="flex:1;padding:10px" onclick="setExecType('urgente')">🔴 Urgente (ya mismo)</button>
+        <button type="button" id="btnProg" class="bt bsm" style="flex:1;padding:10px;background:var(--cd2);color:var(--tx);border:2px solid var(--brd)" onclick="setExecType('programada')">📅 Programar</button>
+      </div>
+      <input type="hidden" id="cr_tipo" value="urgente">
+    </div>
+    <div id="scheduleFields" style="display:none">
+      <div class="ff"><label class="ffl">📅 Fecha preferida</label><input class="ffi" id="cr_fecha" type="date"></div>
+      <div class="ff"><label class="ffl">⏰ Hora preferida</label><select class="ffi" id="cr_hora"><option value="">Seleccionar...</option><option>7:00 AM</option><option>8:00 AM</option><option>9:00 AM</option><option>10:00 AM</option><option>11:00 AM</option><option>12:00 PM</option><option>1:00 PM</option><option>2:00 PM</option><option>3:00 PM</option><option>4:00 PM</option><option>5:00 PM</option></select></div>
+    </div>
     <div class="ff"><label class="ffl">📷 Fotos y videos del daño</label>
       <div class="fzone" id="photoZone"><div style="font-size:12px">📷</div><div style="font-size:17px;color:var(--sub);font-weight:600">Toca para agregar fotos</div><div style="font-size:12px;color:var(--g400)">JPG, PNG, MP4 · Máx 10MB</div></div>
       <input type="file" id="photoInput" multiple accept="image/*,video/*" style="display:none">
@@ -1103,6 +1212,21 @@ async function uploadPhotos(files){
   if(_pf.length) toast('📷 '+_pf.length+' archivo(s) subidos');
 }
 
+function setExecType(type){
+  const el=$('cr_tipo');if(el)el.value=type;
+  const sf=$('scheduleFields');
+  const btnU=$('btnUrg');const btnP=$('btnProg');
+  if(type==='urgente'){
+    if(sf)sf.style.display='none';
+    if(btnU){btnU.className='bt bp';btnU.style.cssText='flex:1;padding:10px'}
+    if(btnP){btnP.className='bt bsm';btnP.style.cssText='flex:1;padding:10px;background:var(--cd2);color:var(--tx);border:2px solid var(--brd)'}
+  }else{
+    if(sf)sf.style.display='block';
+    if(btnP){btnP.className='bt bp';btnP.style.cssText='flex:1;padding:10px'}
+    if(btnU){btnU.className='bt bsm';btnU.style.cssText='flex:1;padding:10px;background:var(--cd2);color:var(--tx);border:2px solid var(--brd)'}
+  }
+}
+
 async function saveClientReport(inqId, propId){
   const catId=$('cr_cat').value;
   const probId=$('cr_prob').value;
@@ -1124,6 +1248,9 @@ async function saveClientReport(inqId, propId){
     descripcion:desc,
     urgencia:prob?prob.urgencia_auto:'programable',
     ubicacion_especifica:ubic||null,
+    tipo_ejecucion:$('cr_tipo')?.value||'urgente',
+    fecha_programada:$('cr_fecha')?.value||null,
+    hora_programada:$('cr_hora')?.value||null,
     reportado_por:U.id
   }).select().single();
 
