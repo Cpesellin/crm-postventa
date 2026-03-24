@@ -2,7 +2,7 @@
   "name": "House Postventa",
   "short_name": "Postventa",
   "description": "Sistema de gestión postventa inmobiliaria",
-  "start_url": "/crm-postventa/postventa.html",
+  "start_url": "//crm-postventa/index.html",
   "display": "standalone",
   "background_color": "#0a0f1e",
   "theme_color": "#0a0f1e",
