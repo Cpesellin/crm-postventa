@@ -186,7 +186,7 @@ header{position:sticky;top:0;z-index:100;background:var(--hdr);backdrop-filter:b
 <!-- MODAL -->
 <div class="mo" id="mdl" style="display:none" onclick="if(event.target===this)cm()">
 <div class="mbox"><div class="mhandle"></div>
-<div class="mhdr"><div><div class="mtt" id="mtt"></div><div class="mst" id="mst"></div></div><button class="mx" onclick="cm()">✕</button></div>
+<div class="mhdr"><div><div class="mtt" id="mtt"></div><div class="mst" id="mst"></div></div><button style="min-width:40px;height:40px;border-radius:50%;border:2px solid var(--brd);background:var(--redbg);font-size:20px;display:flex;align-items:center;justify-content:center;color:var(--red);cursor:pointer;flex-shrink:0" onclick="cm()">✕</button></div>
 <div class="mbd" id="mbd"></div>
 </div></div>
 
@@ -288,9 +288,7 @@ async function regSW(){
       // Listen for notification clicks
       navigator.serviceWorker.addEventListener('message',e=>{
         if(e.data?.type==='NOTIF_CLICK'&&e.data.casoId){
-          if(U.rol==='administrador'||U.rol==='postventa') openCasoAdmin(e.data.casoId);
-          else if(U.rol==='civil') go('mis_trabajos');
-          else go('mis_rep');
+          onBellClick(e.data.casoId);
         }
       });
     }catch(e){console.warn('SW reg failed:',e)}
@@ -454,6 +452,15 @@ function startRealtime(){
       // Notify if message is from someone else
       if(m.autor_id!==U.id){
         pushNotif('💬 '+m.autor_nombre, m.mensaje.substring(0,80), 'info', m.caso_id);
+        // Show clickable in-app notification
+        const c=D.casos.find(x=>x.id===m.caso_id);
+        const title=c?tk(c.numero_caso):'Chat';
+        const el=document.createElement('div');
+        el.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:260;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;max-width:340px;width:90%;cursor:pointer;animation:tIn .3s';
+        el.innerHTML=`<span style="font-size:24px">💬</span><div style="flex:1"><b style="font-size:13px">${m.autor_nombre}</b><div style="font-size:11px;opacity:.9">${m.mensaje.substring(0,50)}</div></div><span style="font-size:11px;opacity:.7">Abrir ›</span>`;
+        el.onclick=()=>{el.remove();showChatFab(m.caso_id,title);openFullChat()};
+        document.body.appendChild(el);
+        setTimeout(()=>{if(el.parentNode)el.remove()},8000);
       }
     })
     .subscribe(status=>{
@@ -579,9 +586,21 @@ function renderBell(){
 function onBellClick(casoId){
   $('bDD').classList.remove('sh');
   if(!casoId) return;
-  if(U.rol==='administrador'||U.rol==='postventa') openCasoAdmin(casoId);
-  else if(U.rol==='civil') go('ordenes');
-  else go('mis_rep');
+  const c=D.casos.find(x=>x.id===casoId);
+  const title=c?tk(c.numero_caso):'Chat';
+  if(U.rol==='administrador'||U.rol==='postventa'){
+    openCasoAdmin(casoId);
+    // Also prep chat fab so they can open chat from modal
+    showChatFab(casoId,title);
+  } else if(U.rol==='civil'){
+    go('mis_trabajos');
+    // Open chat directly
+    setTimeout(()=>{showChatFab(casoId,title);openFullChat()},500);
+  } else {
+    go('mis_rep');
+    // Open chat directly
+    setTimeout(()=>{showChatFab(casoId,title);openFullChat()},500);
+  }
 }
 
 /* ═══ MENU & SECTIONS ═══ */
