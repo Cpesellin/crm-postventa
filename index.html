@@ -297,15 +297,19 @@ async function regSW(){
   }
 }
 
-// Request notification permission with prominent dialog
+// Request notification permission
 function reqNotifPerm(){
   if(!('Notification' in window)) return;
   if(Notification.permission==='granted') return;
   if(Notification.permission==='default'){
-    // Show a custom dialog first
-    megaAlert('🔔 Activa las notificaciones','Para recibir alertas cuando el teléfono esté bloqueado, necesitamos tu permiso de notificaciones.','info','Activar notificaciones');
-    // The mega alert dismiss will trigger the actual browser prompt
-    setTimeout(()=>Notification.requestPermission(),500);
+    // Request directly first
+    Notification.requestPermission().then(p=>{
+      if(p==='granted'){
+        toast('🔔 Notificaciones activadas');
+        // Send test notification
+        pushNotif('✅ House Postventa','Las notificaciones están activas. Recibirás alertas incluso con la pantalla bloqueada.','info');
+      }
+    });
   }
 }
 
@@ -378,7 +382,7 @@ function megaAlert(tit,msg,type='info',btnTxt='Entendido'){
   // Fullscreen visual alert
   const el=document.createElement('div');
   el.className='mega '+type;
-  el.innerHTML=`<div class="megab"><div class="megai">${type==='emer'?'🚨':type==='urge'?'⚠️':'📩'}</div><div class="megat">${tit}</div><div class="megam">${msg}</div><button class="megabt ${type}" onclick="this.closest('.mega').remove()">${btnTxt}</button></div>`;
+  el.innerHTML=`<div class="megab" style="position:relative"><button style="position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(0,0,0,.1);color:#666;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center" onclick="const m=this.closest('.mega');if(m.dataset.iv)clearInterval(m.dataset.iv);m.remove()">✕</button><div class="megai">${type==='emer'?'🚨':type==='urge'?'⚠️':'📩'}</div><div class="megat">${tit}</div><div class="megam">${msg}</div><button class="megabt ${type}" onclick="const m=this.closest('.mega');if(m.dataset.iv)clearInterval(m.dataset.iv);m.remove()">${btnTxt}</button></div>`;
   $('megas').appendChild(el);
   // Emergency: repeat vibration every 5s until dismissed
   if(type==='emer'){
@@ -426,7 +430,7 @@ function startRealtime(){
       }
       // Auto-refresh current view
       const curSec=document.querySelector('.mi.act')?.dataset.s;
-      if(curSec && $('mdl').style.display==='none') ren(curSec);
+      if(curSec && $('mdl').style.display==='none' && curSec!=='ordenes') ren(curSec);
     })
     // New cases
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'pv_casos'},async payload=>{
@@ -434,7 +438,7 @@ function startRealtime(){
       const fresh=await fetchCaseById(payload.new.id);
       if(fresh) D.casos.unshift(fresh);
       const curSec=document.querySelector('.mi.act')?.dataset.s;
-      if(curSec && $('mdl').style.display==='none') ren(curSec);
+      if(curSec && $('mdl').style.display==='none' && curSec!=='ordenes') ren(curSec);
     })
     // New messages (for chat refresh)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'pv_mensajes'},payload=>{
@@ -559,7 +563,7 @@ function startPoll(){
       _alc=cnt;
       // Auto-refresh current view
       const curSec=document.querySelector('.mi.act')?.dataset.s;
-      if(curSec && $('mdl').style.display==='none') ren(curSec);
+      if(curSec && $('mdl').style.display==='none' && curSec!=='ordenes') ren(curSec);
     }catch(e){console.warn('Poll error:',e)}
   },15000);
 }
@@ -942,7 +946,7 @@ async function openCasoAdmin(id){
     }
 
     // Payment responsibility
-    b+=`<select class="ffi" onchange="changeResp('${id}',this.value)"><option value="por_definir" ${c.responsable_pago==='por_definir'?'selected':''}>Pago: Por definir</option><option value="propietario" ${c.responsable_pago==='propietario'?'selected':''}>Propietario</option><option value="inquilino" ${c.responsable_pago==='inquilino'?'selected':''}>Inquilino</option><option value="compartido" ${c.responsable_pago==='compartido'?'selected':''}>Compartido</option></select>`;
+    b+=`<select class="ffi" onchange="changeResp('${id}',this.value)"><option value="por_definir" ${c.responsable_pago==='por_definir'?'selected':''}>Pago: Por definir</option><option value="propietario" ${c.responsable_pago==='propietario'?'selected':''}>Propietario</option><option value="inquilino" ${c.responsable_pago==='inquilino'?'selected':''}>Inquilino</option><option value="compartido" ${c.responsable_pago==='compartido'?'selected':''}>Compartido</option><option value="inmobiliaria" ${c.responsable_pago==='inmobiliaria'?'selected':''}>Inmobiliaria</option></select>`;
     b+=`</div>`;
   }
 
@@ -1033,6 +1037,7 @@ function rOrdenes(){
           <div><b style="font-size:13px">${c.propiedad?.direccion||'?'}</b><div style="font-size:11px;color:var(--sub)">${c.propiedad?.barrio||''} · ${c.propiedad?.ciudad||''}</div></div>
         </div>
         <div style="font-size:13px;margin-bottom:6px;line-height:1.5;padding:8px;background:var(--cd);border:1px solid var(--brd);border-radius:8px"><b style="font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:3px">Descripción del cliente</b>${c.descripcion||'Sin descripción'}</div>
+        <div id="evid_${c.id}" style="margin-bottom:6px"></div>
         <div style="font-size:12px;color:var(--sub);margin-bottom:4px">👤 ${c.inquilino?.nombre||'Cliente'}</div>
         ${c.inquilino?.hora_preferida?`<div style="font-size:12px;color:var(--green);margin-bottom:6px;font-weight:600">🕐 Disponible: ${c.inquilino.hora_preferida}</div>`:''}
         <a href="tel:3001234567" class="callb" style="margin-bottom:4px">📞 Llamar a Ejecutivo Postventa</a>
@@ -1043,6 +1048,19 @@ function rOrdenes(){
       </div></div>`;
   });
   el.innerHTML=h;
+  // Load evidence photos/videos for each order
+  available.forEach(c=>{
+    SB.from('pv_evidencias').select('*').eq('caso_id',c.id).order('created_at')
+      .then(({data:ev})=>{
+        const el2=$('evid_'+c.id);if(!el2||!ev||!ev.length)return;
+        el2.innerHTML=`<div style="padding:8px;background:var(--cd);border:1px solid var(--brd);border-radius:8px"><b style="font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px">📷 Evidencias del cliente (${ev.length})</b><div style="display:flex;gap:4px;flex-wrap:wrap">${ev.map(e=>{
+          const isVid=e.url&&(e.url.includes('/video/')||e.url.endsWith('.mp4'));
+          return isVid
+            ?`<video src="${e.url}" controls style="width:80px;height:80px;object-fit:cover;border-radius:6px"></video>`
+            :`<img src="${e.url_thumb||e.url}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;cursor:pointer" onclick="window.open('${e.url}','_blank')">`;
+        }).join('')}</div></div>`;
+      });
+  });
 }
 
 async function takeOrder(casoId){
