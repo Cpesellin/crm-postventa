@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>House Postventa</title>
 <meta name="theme-color" content="#0a0f1e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:ital,wght@0,600;0,700;0,900;1,600;1,700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -273,36 +275,186 @@ function myInq(){
 }
 function myProf(){return D.profs.find(p=>p.usuario_id===U.id)}
 
-/* ═══ NOTIFICATIONS ═══ */
-function reqNotifPerm(){if('Notification' in window && Notification.permission==='default') Notification.requestPermission()}
-function pushNotif(title,body){
-  if('Notification' in window && Notification.permission==='granted'){
-    try{new Notification(title,{body,vibrate:[300,200,300,200,300],requireInteraction:true,tag:'hp-'+Date.now()})}catch(e){}
+/* ═══ NOTIFICATIONS — INVASIVE SYSTEM ═══ */
+let _swReady=null;
+
+// Register Service Worker
+async function regSW(){
+  if('serviceWorker' in navigator){
+    try{
+      const reg=await navigator.serviceWorker.register('sw.js');
+      _swReady=reg;
+      console.log('SW registered');
+      // Listen for notification clicks
+      navigator.serviceWorker.addEventListener('message',e=>{
+        if(e.data?.type==='NOTIF_CLICK'&&e.data.casoId){
+          if(U.rol==='administrador'||U.rol==='postventa') openCasoAdmin(e.data.casoId);
+          else if(U.rol==='civil') go('mis_trabajos');
+          else go('mis_rep');
+        }
+      });
+    }catch(e){console.warn('SW reg failed:',e)}
   }
 }
-function megaAlert(tit,msg,type='info',btnTxt='Entendido'){
-  // Vibrate aggressively
-  if(navigator.vibrate) navigator.vibrate([500,200,500,200,500,200,800,300,800]);
-  // Browser push notification (works with screen off on Android)
-  pushNotif(tit,msg);
-  // Audio alarm
+
+// Request notification permission with prominent dialog
+function reqNotifPerm(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission==='granted') return;
+  if(Notification.permission==='default'){
+    // Show a custom dialog first
+    megaAlert('🔔 Activa las notificaciones','Para recibir alertas cuando el teléfono esté bloqueado, necesitamos tu permiso de notificaciones.','info','Activar notificaciones');
+    // The mega alert dismiss will trigger the actual browser prompt
+    setTimeout(()=>Notification.requestPermission(),500);
+  }
+}
+
+// Send notification via Service Worker (works with screen off)
+function pushNotif(title,body,urgency='info',casoId=''){
+  // 1. Service Worker notification (background-capable)
+  if(_swReady&&_swReady.active){
+    _swReady.active.postMessage({type:'PUSH_NOTIF',title,body,tag:'hp-'+Date.now(),urgency,casoId});
+  }
+  // 2. Fallback: direct Notification API
+  else if('Notification' in window && Notification.permission==='granted'){
+    try{
+      const n=new Notification(title,{
+        body,
+        icon:'icon-192.png',
+        requireInteraction:true,
+        tag:'hp-'+Date.now(),
+        vibrate:urgency==='emer'?[500,200,500,200,500,200,800]:[300,100,300],
+        silent:false
+      });
+      n.onclick=()=>{window.focus();n.close()};
+    }catch(e){}
+  }
+}
+
+// Aggressive alarm sound generator
+function playAlarm(type='info'){
   try{
     const ac=new(window.AudioContext||window.webkitAudioContext)();
-    const o=ac.createOscillator(),g=ac.createGain();
-    o.connect(g);g.connect(ac.destination);
-    o.frequency.value=type==='emer'?900:700;g.gain.value=0.4;o.start();
-    setTimeout(()=>o.frequency.value=1200,200);
-    setTimeout(()=>o.frequency.value=900,400);
-    setTimeout(()=>o.frequency.value=1200,600);
-    setTimeout(()=>o.stop(),1000);
+    const g=ac.createGain();g.connect(ac.destination);
+    if(type==='emer'){
+      // Emergency: loud siren 3 seconds
+      g.gain.value=0.6;
+      for(let i=0;i<6;i++){
+        const o=ac.createOscillator();o.connect(g);
+        o.frequency.value=i%2===0?900:1200;
+        o.start(ac.currentTime+i*0.4);o.stop(ac.currentTime+i*0.4+0.35);
+      }
+    }else if(type==='urge'){
+      // Urgent: 2 beeps
+      g.gain.value=0.5;
+      for(let i=0;i<3;i++){
+        const o=ac.createOscillator();o.connect(g);
+        o.frequency.value=800;o.start(ac.currentTime+i*0.3);o.stop(ac.currentTime+i*0.3+0.2);
+      }
+    }else{
+      // Info: single pleasant chime
+      g.gain.value=0.3;
+      const o=ac.createOscillator();o.connect(g);o.frequency.value=660;
+      o.start();setTimeout(()=>o.stop(),200);
+    }
   }catch(e){}
-  // Fullscreen alert
+}
+
+function megaAlert(tit,msg,type='info',btnTxt='Entendido'){
+  // Vibrate aggressively based on type
+  if(navigator.vibrate){
+    if(type==='emer') navigator.vibrate([500,200,500,200,500,200,800,300,800,300,800]);
+    else if(type==='urge') navigator.vibrate([400,150,400,150,400]);
+    else navigator.vibrate([300,100,300]);
+  }
+  // Push notification (works with screen off)
+  pushNotif(tit,msg,type);
+  // Alarm sound
+  playAlarm(type);
+  // Wake Lock for emergencies (keeps screen on)
+  if(type==='emer'&&navigator.wakeLock){
+    navigator.wakeLock.request('screen').then(wl=>{setTimeout(()=>wl.release(),30000)}).catch(()=>{});
+  }
+  // Fullscreen visual alert
   const el=document.createElement('div');
   el.className='mega '+type;
   el.innerHTML=`<div class="megab"><div class="megai">${type==='emer'?'🚨':type==='urge'?'⚠️':'📩'}</div><div class="megat">${tit}</div><div class="megam">${msg}</div><button class="megabt ${type}" onclick="this.closest('.mega').remove()">${btnTxt}</button></div>`;
   $('megas').appendChild(el);
-  // Auto-remove after 30s
-  setTimeout(()=>{if(el.parentNode)el.remove()},30000);
+  // Emergency: repeat vibration every 5s until dismissed
+  if(type==='emer'){
+    const iv=setInterval(()=>{
+      if(!el.parentNode){clearInterval(iv);return}
+      if(navigator.vibrate) navigator.vibrate([400,200,400,200,400]);
+      playAlarm('emer');
+    },5000);
+    el.dataset.iv=iv;
+  }
+  // Auto-remove after 60s for non-emergency, 120s for emergency
+  setTimeout(()=>{if(el.parentNode){if(el.dataset.iv)clearInterval(el.dataset.iv);el.remove()}},type==='emer'?120000:60000);
+}
+
+/* ═══ SUPABASE REALTIME (instant notifications) ═══ */
+let _rtChannel=null;
+
+function startRealtime(){
+  if(_rtChannel) SB.removeChannel(_rtChannel);
+
+  _rtChannel = SB.channel('pv-live')
+    // New alerts
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'pv_alertas'},payload=>{
+      const a=payload.new;
+      console.log('RT: New alert',a.titulo);
+      D.als.unshift(a);
+      const cnt=D.als.filter(x=>!x.leida).length;
+      $('bBdg').textContent=cnt;$('bBdg').style.display=cnt>0?'flex':'none';
+      // Determine if this alert is for my role
+      const forMe=!a.para_rol || a.para_rol===U.rol || U.rol==='administrador';
+      if(forMe){
+        const type=a.nivel==='rojo'?'emer':a.nivel==='amarillo'?'urge':'info';
+        megaAlert(a.titulo, a.mensaje||'Revisa la aplicación', type);
+      }
+    })
+    // Case updates
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pv_casos'},async payload=>{
+      const upd=payload.new;
+      console.log('RT: Case update',upd.id,upd.estado);
+      // Refresh the updated case
+      const fresh=await fetchCaseById(upd.id);
+      if(fresh){
+        const idx=D.casos.findIndex(c=>c.id===upd.id);
+        if(idx>=0) D.casos[idx]=fresh; else D.casos.unshift(fresh);
+      }
+      // Auto-refresh current view
+      const curSec=document.querySelector('.mi.act')?.dataset.s;
+      if(curSec && $('mdl').style.display==='none') ren(curSec);
+    })
+    // New cases
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'pv_casos'},async payload=>{
+      console.log('RT: New case',payload.new.id);
+      const fresh=await fetchCaseById(payload.new.id);
+      if(fresh) D.casos.unshift(fresh);
+      const curSec=document.querySelector('.mi.act')?.dataset.s;
+      if(curSec && $('mdl').style.display==='none') ren(curSec);
+    })
+    // New messages (for chat refresh)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'pv_mensajes'},payload=>{
+      const m=payload.new;
+      // If fullscreen chat is open for this case, refresh it
+      if(_chatCasoId===m.caso_id){
+        SB.from('pv_mensajes').select('*').eq('caso_id',m.caso_id).order('created_at')
+          .then(({data:ms})=>{
+            renderFSMsgs(ms||[]);
+            setTimeout(()=>{const b=$('chatFSBody');if(b)b.scrollTop=b.scrollHeight},50);
+          });
+      }
+      // Notify if message is from someone else
+      if(m.autor_id!==U.id){
+        pushNotif('💬 '+m.autor_nombre, m.mensaje.substring(0,80), 'info', m.caso_id);
+      }
+    })
+    .subscribe(status=>{
+      console.log('Realtime status:',status);
+    });
 }
 
 /* ═══ CLOUDINARY ═══ */
@@ -346,7 +498,28 @@ async function login(){
   }catch(e){$('lerr').textContent='Error de conexión';$('lerr').style.display='block'}
   $('lin_btn').disabled=false;
 }
-function logout(){sessionStorage.removeItem('pv_u');location.reload()}
+function logout(){sessionStorage.removeItem('pv_u');if(_rtChannel)SB.removeChannel(_rtChannel);location.reload()}
+
+/* ═══ PWA INSTALL ═══ */
+let _installPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();_installPrompt=e;showInstallBanner()});
+function showInstallBanner(){
+  if(!_installPrompt||!U)return;
+  const el=document.createElement('div');
+  el.id='installBanner';
+  el.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:260;background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:12px 20px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.3);display:flex;align-items:center;gap:10px;max-width:340px;width:90%;animation:tIn .3s';
+  el.innerHTML='<div style="font-size:28px">📲</div><div style="flex:1"><b style="font-size:14px">Instalar App</b><div style="font-size:11px;opacity:.8">Recibe notificaciones con pantalla bloqueada</div></div><button onclick="installPWA()" style="padding:8px 14px;border:2px solid #fff;border-radius:8px;background:none;color:#fff;font-size:12px;font-weight:800;cursor:pointer">Instalar</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:4px">×</button>';
+  document.body.appendChild(el);
+  setTimeout(()=>{const b=$('installBanner');if(b)b.remove()},15000);
+}
+async function installPWA(){
+  if(!_installPrompt)return;
+  _installPrompt.prompt();
+  const{outcome}=await _installPrompt.userChoice;
+  if(outcome==='accepted')toast('✅ App instalada');
+  _installPrompt=null;
+  const b=$('installBanner');if(b)b.remove();
+}
 
 /* ═══ INIT ═══ */
 function initApp(){
@@ -463,7 +636,9 @@ async function loadAllData(){
     $('bBdg').textContent=_alc;$('bBdg').style.display=_alc>0?'flex':'none';
     // If cases came back empty, try again after 2s (cache issue workaround)
     if(D.casos.length===0){console.warn('Cases empty! Retrying in 2s...');setTimeout(async()=>{D.casos=await fetchCases();console.log('Retry result:',D.casos.length);const cur=document.querySelector('.mi.act')?.dataset.s;if(cur)ren(cur)},2000)}
-    startPoll();
+    startRealtime();
+    startPoll(); // Fallback every 30s
+    regSW(); // Register Service Worker for background notifications
     // Navigate to first section
     const R=U.rol;
     if(R==='administrador'||R==='postventa') go('dash');
